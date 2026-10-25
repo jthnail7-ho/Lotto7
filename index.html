@@ -1,0 +1,482 @@
+!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>로또 번호 연구소</title>
+<style>
+:root{--bg:#f3f6f4;--card:#fff;--ink:#14231c;--sub:#5a6b62;--line:#d5ded9;--accent:#0f6b4f;--hot:#c8452d;--cold:#2f6fb3;--ball:#e9eeeb;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1713;--card:#18231d;--ink:#e6efe9;--sub:#92a59b;--line:#2a3a32;--accent:#4cc79a;--hot:#ff8366;--cold:#7db4ee;--ball:#243229}}
+:root[data-theme="dark"]{--bg:#0f1713;--card:#18231d;--ink:#e6efe9;--sub:#92a59b;--line:#2a3a32;--accent:#4cc79a;--hot:#ff8366;--cold:#7db4ee;--ball:#243229;color-scheme:dark}
+*{box-sizing:border-box}
+input{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font:inherit;color:inherit}
+input:focus-visible{outline:3px solid var(--cold);outline-offset:2px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.top button{padding:8px 12px;font-size:.82rem;white-space:nowrap}
+.set button{padding:6px 10px;font-size:.8rem}
+.set .del{margin-left:auto}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Pretendard","Noto Sans KR",system-ui,sans-serif;line-height:1.55}
+main{max-width:760px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.6rem;margin:8px 0 4px;letter-spacing:-.02em}
+h2{font-size:1.05rem;margin:0 0 10px}
+p.lead{color:var(--sub);margin:0 0 16px;font-size:.92rem}
+.notice{background:var(--card);border-left:4px solid var(--hot);padding:10px 14px;border-radius:6px;font-size:.88rem;margin-bottom:16px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+label{font-size:.85rem;color:var(--sub);display:block;margin-bottom:4px}
+select,textarea,button{font:inherit;color:inherit}
+select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+textarea{min-height:110px;font-family:ui-monospace,monospace;font-size:.85rem}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+@media(max-width:480px){.row{grid-template-columns:1fr}}
+button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:11px 16px;cursor:pointer;font-weight:600}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--cold);outline-offset:2px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.set{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--line)}
+.set:first-child{border-top:0}
+.b{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:.9rem;background:var(--ball)}
+.b.bonus{background:var(--hot);color:#fff}
+.meta{font-size:.78rem;color:var(--sub);margin-left:auto}
+.bar{display:flex;align-items:center;gap:8px;font-size:.8rem;margin:3px 0}
+.bar i{display:block;height:10px;border-radius:5px;background:var(--accent)}
+.bar.hot i{background:var(--hot)}.bar.cold i{background:var(--cold)}
+.bar span.n{width:26px;text-align:right;font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:480px){.grid2{grid-template-columns:1fr}}
+.odds{font-size:1.1rem;font-weight:700}
+.small{font-size:.8rem;color:var(--sub)}
+</style>
+</head>
+<body>
+<main>
+<div class="top"><h1>로또 번호 연구소</h1><div style="display:flex;gap:6px;align-items:center"><select id="lang" aria-label="Language" style="width:auto;padding:7px 8px;font-size:.82rem"><option value="ko">한국어</option><option value="en">English</option></select><button class="ghost" id="theme" type="button">다크 모드</button></div></div>
+<p class="lead">번호 생성 · 과거 추첨 통계 · 확률 계산을 한 곳에서.</p>
+<div class="notice">로또는 매회 독립적인 무작위 추첨입니다. 통계나 패턴으로 당첨 확률을 높일 수 없고, 아래 도구는 재미와 참고용입니다. 감당 가능한 금액만 쓰세요.</div>
+ 
+<section>
+<h2>1. 복권 선택</h2>
+<label for="lot">복권 종류</label>
+<select id="lot"></select>
+<p class="odds" id="odds" style="margin:12px 0 0"></p>
+<p class="small" id="oddsNote"></p>
+</section>
+ 
+<section>
+<h2>2. 번호 생성</h2>
+<div class="row">
+<div><label for="mode">생성 방식</label>
+<select id="mode">
+<option value="random">완전 무작위</option>
+<option value="balanced">균형형 (홀짝·합계·연속 필터)</option>
+<option value="hot">자주 나온 번호 가중 (분석 데이터 필요)</option>
+<option value="cold">오래 안 나온 번호 가중 (분석 데이터 필요)</option>
+<option value="unpopular">인기 없는 번호 (32 이상 위주, 당첨 시 분할 위험 감소)</option>
+<option value="zone">구간 분포 균형 (10단위 구간에 고르게)</option>
+<option value="gap">간격 패턴 (3번 데이터 필요, 마지막 줄 = 최신)</option>
+<option value="filter">패턴 필터 (끝수·연번·최근 당첨 제외)</option>
+<option value="ml">점수 모델 (최근성 가중 데모, 3번 데이터 필요)</option>
+</select></div>
+<div><label for="cnt">세트 수</label>
+<select id="cnt"><option>1</option><option>3</option><option selected>5</option><option>10</option></select></div>
+</div>
+<p class="small" id="modeNote"></p>
+<button id="gen">번호 뽑기</button>
+<div id="out" style="margin-top:12px"></div>
+<div class="btns"><button class="ghost" id="copy">결과 복사</button></div>
+</section>
+ 
+<section>
+<h2>3. 과거 추첨 분석</h2>
+<label for="hist">회차별 번호를 한 줄씩 붙여넣기 (예: 3 11 19 27 33 41)</label>
+<textarea id="hist" placeholder="3 11 19 27 33 41&#10;5 8 14 22 30 44"></textarea>
+<div class="btns"><button id="ana">분석하기</button><button class="ghost" id="demo">예시 데이터 넣기</button></div>
+<div id="ana-out" style="margin-top:14px"></div>
+<p class="small">공식 사이트의 당첨번호를 붙여넣으면 빈도, 홀짝 비율, 합계 분포를 보여줍니다. 이 통계는 과거 기록일 뿐 미래를 예측하지 않습니다.</p>
+</section>
+<section>
+<h2>4. 내 번호 저장 · 과거 당첨 비교</h2>
+<label for="mine">직접 번호 입력 (메인 번호 뒤에 보너스 번호를 이어서, 공백 또는 쉼표로 구분)</label>
+<div style="display:flex;gap:8px"><input id="mine" placeholder="예: 3 11 19 27 33 41" inputmode="numeric"><button id="add" type="button" style="white-space:nowrap">저장</button></div>
+<div id="saved" style="margin-top:12px"></div>
+<div class="btns"><button id="cmp" type="button">등수 판정 · 3번 데이터와 비교</button></div>
+<div class="btns"><button class="ghost" id="expCsv" type="button">CSV 저장</button><button class="ghost" id="expJson" type="button">JSON 백업</button><button class="ghost" id="expTxt" type="button">텍스트 복사</button></div>
+<p class="small" id="expMsg" role="status"></p>
+<div class="btns"><button class="ghost" id="impBtn" type="button">JSON 불러오기</button><input type="file" id="impFile" accept=".json,application/json" hidden></div>
+<details style="margin-top:8px"><summary class="small">파일 선택이 안 되면 내용을 붙여넣어 불러오기</summary><textarea id="impText" style="min-height:70px" aria-label="JSON 붙여넣기"></textarea><div class="btns"><button class="ghost" id="impPaste" type="button">붙여넣은 JSON 불러오기</button></div></details>
+<p class="small" id="cmpMsg" role="status"></p>
+<p class="small">저장한 번호는 이 기기의 브라우저에만 보관됩니다. 3번 데이터의 각 줄에 메인 번호 뒤 보너스 번호를 이어 쓰면 등수가 판정됩니다 (한국·일본·파워볼·메가밀리언스는 1개, 유로밀리언스는 2개). 내보내기는 모든 복권의 저장 번호를 포함합니다.</p>
+</section>
+</main>
+ 
+<script>
+const LOTS={
+kr:{n:"한국 로또 6/45",pick:6,max:45,bonus:null},
+us:{n:"미국 파워볼",pick:5,max:69,bonus:{max:26}},
+mm:{n:"미국 메가밀리언스",pick:5,max:70,bonus:{max:25}},
+eu:{n:"유로밀리언스",pick:5,max:50,bonus:{max:12,count:2}},
+jp:{n:"일본 로또6",pick:6,max:43,bonus:null}
+};
+const $=id=>document.getElementById(id);
+const lot=$('lot');
+for(const k in LOTS){const o=document.createElement('option');o.value=k;o.textContent=LOTS[k].n;lot.appendChild(o)}
+function comb(n,k){let r=1;for(let i=1;i<=k;i++)r=r*(n-k+i)/i;return Math.round(r)}
+function cur(){return LOTS[lot.value]}
+function showOdds(){
+const L=cur();let t=comb(L.max,L.pick);let note=`메인 ${L.pick}개 (1~${L.max})`;
+if(L.bonus){const c=L.bonus.count||1;t*=comb(L.bonus.max,c);note+=` + 보너스 ${c}개 (1~${L.bonus.max})`}
+$('odds').textContent="1등 확률: 약 1 / "+t.toLocaleString('ko-KR');
+$('oddsNote').textContent=note+". 어떤 번호를 골라도 확률은 동일합니다.";
+}
+lot.onchange=()=>{showOdds();$('out').innerHTML='';};
+showOdds();
+ 
+let stats=null;
+function parseHist(){
+const L=cur();const rows=[];
+$('hist').value.split('\n').forEach(l=>{
+const nums=(l.match(/\d+/g)||[]).map(Number).slice(0,L.pick);
+if(nums.length===L.pick&&nums.every(x=>x>=1&&x<=L.max)&&new Set(nums).size===L.pick)rows.push(nums);
+});return rows;
+}
+function rnd(n){return Math.floor(Math.random()*n)}
+function weightedPick(L,w){
+const s=new Set();
+while(s.size<L.pick){
+let tot=0;for(let i=1;i<=L.max;i++)if(!s.has(i))tot+=w[i];
+let r=Math.random()*tot;
+for(let i=1;i<=L.max;i++){if(s.has(i))continue;r-=w[i];if(r<=0){s.add(i);break}}
+}return [...s].sort((a,b)=>a-b);
+}
+function plain(L){const s=new Set();while(s.size<L.pick)s.add(1+rnd(L.max));return [...s].sort((a,b)=>a-b)}
+function okBalanced(L,a){
+const odd=a.filter(x=>x%2).length;
+if(odd<1||odd>L.pick-1)return false;
+const sum=a.reduce((x,y)=>x+y,0);const mean=L.pick*(L.max+1)/2;
+const sd=Math.sqrt(L.pick*(L.max*L.max-1)/12*(L.max-L.pick)/(L.max-1));
+if(Math.abs(sum-mean)>1.2*sd)return false;
+let run=1;for(let i=1;i<a.length;i++){run=a[i]==a[i-1]+1?run+1:1;if(run>2)return false}
+return true;
+}
+function makeSet(L,mode){
+let a;
+if(mode==='balanced'){let t=0;do{a=plain(L);t++}while(!okBalanced(L,a)&&t<5000)}
+else if(mode==='zone'){a=zoneSet(L)}else if(mode==='gap'){a=gapSet(L)}else if(mode==='filter'){a=filterSet(L)}else if(mode==='ml'){a=mlSet(L)}
+else if(mode==='unpopular'){const w=[0];for(let i=1;i<=L.max;i++)w.push(i>=32?3:1);a=weightedPick(L,w)}
+else if(mode==='hot'||mode==='cold'){
+if(!stats){a=plain(L)}else{
+const w=[0];const mx=Math.max(...stats.freq.slice(1));
+for(let i=1;i<=L.max;i++){const f=stats.freq[i];w.push(mode==='hot'?1+f:1+(mx-f))}
+a=weightedPick(L,w)}}
+else a=plain(L);
+let b=[];
+if(L.bonus){const c=L.bonus.count||1;const s=new Set();while(s.size<c)s.add(1+rnd(L.bonus.max));b=[...s].sort((x,y)=>x-y)}
+return {a,b};
+}
+let last=[];
+$('gen').onclick=()=>{
+const L=cur(),mode=$('mode').value,c=+$('cnt').value;
+if(((mode==='hot'||mode==='cold')&&!stats)||((mode==='gap'||mode==='ml')&&!parseDraws().length)){$('out').innerHTML='<p class="small">먼저 3번에서 과거 데이터를 분석해야 이 방식을 쓸 수 있습니다. 지금은 무작위로 뽑았습니다.</p>'}
+else $('out').innerHTML='';
+last=[];
+for(let i=0;i<c;i++){
+const s=makeSet(L,mode);last.push(s);
+const d=document.createElement('div');d.className='set';
+d.innerHTML=s.a.map(x=>`<span class="b">${x}</span>`).join('')+s.b.map(x=>`<span class="b bonus">${x}</span>`).join('')+`<span class="meta">합 ${s.a.reduce((x,y)=>x+y,0)} · 홀 ${s.a.filter(x=>x%2).length}</span>`;
+const sv=document.createElement('button');sv.className='ghost';sv.type='button';sv.textContent='저장';sv.onclick=()=>{saveSet(s);sv.textContent='저장됨'};d.appendChild(sv);
+$('out').appendChild(d);
+}};
+$('copy').onclick=async()=>{
+const t=last.map((s,i)=>`${i+1}) ${s.a.join(' ')}${s.b.length?' + '+s.b.join(' '):''}`).join('\n');
+try{await navigator.clipboard.writeText(t);$('copy').textContent='복사됨'}catch(e){$('copy').textContent='복사 실패'}
+setTimeout(()=>$('copy').textContent='결과 복사',1500);
+};
+$('demo').onclick=()=>{
+const L=cur();const lines=[];for(let i=0;i<60;i++)lines.push(plain(L).join(' '));
+$('hist').value=lines.join('\n');
+};
+function bars(items,cls){return items.map(([n,f],_,arr)=>{const mx=Math.max(...arr.map(x=>x[1]),1);return `<div class="bar ${cls}"><span class="n">${n}</span><i style="width:${Math.max(4,f/mx*100)}%"></i><span>${f}회</span></div>`}).join('')}
+$('ana').onclick=()=>{
+const L=cur();const rows=parseHist();
+if(!rows.length){$('ana-out').innerHTML='<p class="small">인식된 회차가 없습니다. 한 줄에 '+L.pick+'개 숫자(1~'+L.max+', 중복 없음)를 공백으로 구분해 넣어주세요.</p>';return}
+const freq=Array(L.max+1).fill(0);const lastSeen=Array(L.max+1).fill(-1);
+rows.forEach((r,i)=>r.forEach(n=>{freq[n]++;lastSeen[n]=i}));
+stats={freq};
+const arr=[];for(let i=1;i<=L.max;i++)arr.push([i,freq[i]]);
+const hot=[...arr].sort((a,b)=>b[1]-a[1]||a[0]-b[0]).slice(0,6);
+const cold=[...arr].sort((a,b)=>a[1]-b[1]||a[0]-b[0]).slice(0,6);
+const gap=[];for(let i=1;i<=L.max;i++)gap.push([i,lastSeen[i]<0?rows.length:rows.length-1-lastSeen[i]]);
+gap.sort((a,b)=>b[1]-a[1]);
+const oddAvg=(rows.reduce((s,r)=>s+r.filter(x=>x%2).length,0)/rows.length).toFixed(2);
+const sums=rows.map(r=>r.reduce((x,y)=>x+y,0));
+const sAvg=(sums.reduce((x,y)=>x+y,0)/sums.length).toFixed(1);
+const exp=(rows.length*L.pick/L.max).toFixed(1);
+$('ana-out').innerHTML=`<p><b>${rows.length}회차</b> 분석 · 번호당 기대 출현 약 ${exp}회 · 평균 홀수 ${oddAvg}개 · 평균 합계 ${sAvg}</p>
+<div class="grid2"><div><h2>많이 나온 번호</h2>${bars(hot,'hot')}</div><div><h2>적게 나온 번호</h2>${bars(cold,'cold')}</div></div>
+<h2 style="margin-top:12px">가장 오래 안 나온 번호</h2>${bars(gap.slice(0,5).map(([n,g])=>[n,g]),'')}
+<p class="small">막대 오른쪽 숫자는 출현 횟수(위)와 미출현 회차 수(아래)입니다. 편차는 대부분 우연의 범위 안에 있습니다.</p>`;
+};
+function store(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+let theme=load('theme',null)||(window.matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+function applyTheme(t){document.documentElement.setAttribute('data-theme',t);$('theme').textContent=t==='dark'?'라이트 모드':'다크 모드'}
+applyTheme(theme);
+$('theme').onclick=()=>{theme=theme==='dark'?'light':'dark';applyTheme(theme);store('theme',theme)};
+ 
+let saved=load('saved',[]);
+function ballsHtml(s){return s.a.map(x=>`<span class="b">${x}</span>`).join('')+s.b.map(x=>`<span class="b bonus">${x}</span>`).join('')}
+function saveSet(s){saved.push({lot:lot.value,a:s.a,b:s.b,t:Date.now()});store('saved',saved);renderSaved()}
+function renderSaved(res){
+const L=cur();const box=$('saved');box.innerHTML='';
+const mine=saved.map((s,i)=>({s,i})).filter(x=>x.s.lot===lot.value);
+if(!mine.length){box.innerHTML='<p class="small">저장된 번호가 없습니다. 2번에서 "저장"을 누르거나 위에 직접 입력하세요.</p>';return}
+mine.forEach(({s,i})=>{
+const d=document.createElement('div');d.className='set';
+d.innerHTML=ballsHtml(s);
+const del=document.createElement('button');del.className='ghost del';del.type='button';del.textContent='삭제';
+del.onclick=()=>{saved.splice(i,1);store('saved',saved);renderSaved()};
+d.appendChild(del);
+if(res&&res[i]){
+const c=res[i].c,tiers=res[i].tiers;let best=0;for(let k=L.pick;k>=0;k--)if(c[k]>0){best=k;break}
+const parts=[];for(let k=L.pick;k>=3;k--)parts.push(k+'개 일치 '+c[k]+'회');
+const low=c.slice(0,3).reduce((x,y)=>x+y,0);
+const p=document.createElement('div');p.className='small';p.style.width='100%';
+p.textContent='최고 '+best+'개 일치 · '+parts.join(' · ')+' · 2개 이하 '+low+'회';
+d.appendChild(p);
+const ord=k=>k.startsWith('잭팟')?0:(parseInt(k)||99);
+const ks=Object.keys(tiers).sort((a,b)=>ord(a)-ord(b));
+const t=document.createElement('div');t.style.width='100%';t.style.fontWeight='600';t.style.fontSize='.85rem';
+t.textContent=ks.length?'등수 판정: '+ks.map(k=>k+' '+tiers[k]+'회').join(' · '):'등수 판정: 해당 없음';
+d.appendChild(t)}
+box.appendChild(d)});
+}
+lot.addEventListener('change',()=>{$('cmpMsg').textContent='';renderSaved()});
+$('add').onclick=()=>{
+const L=cur();
+const all=($('mine').value.match(/\d+/g)||[]).map(Number);const extra=BONUS_IN.has(lot.value)?0:(BONUS_N[lot.value]||0);
+const n=[...new Set(all.slice(0,L.pick))].filter(x=>x>=1&&x<=L.max);const bn=all.slice(L.pick,L.pick+extra);
+if(n.length!==L.pick){$('cmpMsg').textContent=L.n+': 1~'+L.max+' 사이의 서로 다른 숫자 '+L.pick+'개를 입력해주세요.';return}
+if(bn.length!==extra||!bn.every(x=>x>=1&&x<=L.bonus.max)){$('cmpMsg').textContent=L.n+': 메인 '+L.pick+'개 뒤에 보너스 '+extra+'개(1~'+L.bonus.max+')를 이어서 입력해주세요.';return}
+saved.push({lot:lot.value,a:n.sort((a,b)=>a-b),b:bn,t:Date.now()});
+store('saved',saved);$('mine').value='';$('cmpMsg').textContent='저장했습니다.';renderSaved();
+};
+$('cmp').onclick=()=>{
+const L=cur();const rows=parseHist();
+if(!rows.length){$('cmpMsg').textContent='3번에 과거 추첨 데이터를 먼저 붙여넣어 주세요.';return}
+const res={};
+saved.forEach((s,i)=>{if(s.lot!==lot.value)return;
+const draws=parseDraws();const k=lot.value;const tiers={};cmpSkipped=0;
+const c=Array(L.pick+1).fill(0);
+draws.forEach(dr=>{const m=dr.m.filter(x=>s.a.includes(x)).length;c[m]++;
+let bh;
+if(BONUS_IN.has(k))bh=dr.b.length&&s.a.includes(dr.b[0])?1:0;
+else{if(dr.b.length!==(BONUS_N[k]||0)){cmpSkipped++;return}bh=dr.b.filter(x=>s.b.includes(x)).length}
+let lb=rankOf(k,m,bh);
+if(BONUS_IN.has(k)&&m===5&&!dr.b.length)lb='2·3등(보너스 미입력)';
+if(lb)tiers[lb]=(tiers[lb]||0)+1});
+res[i]={c,tiers}});
+$('cmpMsg').textContent=rows.length+'회차와 비교했습니다.'+(cmpSkipped?' (보너스 번호가 없는 '+cmpSkipped+'회차는 등수 판정에서 제외)':'');
+renderSaved(res);
+};
+const BONUS_IN=new Set(['kr','jp']);
+const BONUS_N={us:1,mm:1,eu:2};
+const PB={'5+1':'잭팟','5+0':'2등','4+1':'3등','4+0':'4등','3+1':'5등','3+0':'6등','2+1':'7등','1+1':'8등','0+1':'9등'};
+const EU={'5+2':'1등','5+1':'2등','5+0':'3등','4+2':'4등','4+1':'5등','3+2':'6등','4+0':'7등','2+2':'8등','3+1':'9등','3+0':'10등','1+2':'11등','2+1':'12등','2+0':'13등'};
+let cmpSkipped=0;
+function rankOf(k,m,b){
+if(k==='kr'||k==='jp'){if(m===6)return'1등';if(m===5)return b?'2등':'3등';if(m===4)return'4등';if(m===3)return'5등';return null}
+if(k==='eu')return EU[m+'+'+b]||null;
+return PB[m+'+'+b]||null}
+function parseDraws(){
+const L=cur(),k=lot.value,out=[];
+const extra=BONUS_IN.has(k)?1:(BONUS_N[k]||0);
+const bmax=BONUS_IN.has(k)?L.max:(L.bonus?L.bonus.max:0);
+$('hist').value.split('\n').forEach(l=>{
+const nums=(l.match(/\d+/g)||[]).map(Number);
+const m=nums.slice(0,L.pick);
+if(m.length!==L.pick||!m.every(x=>x>=1&&x<=L.max)||new Set(m).size!==L.pick)return;
+let b=nums.slice(L.pick,L.pick+extra);
+if(b.length!==extra||!b.every(x=>x>=1&&x<=bmax)||(BONUS_IN.has(k)&&m.includes(b[0])))b=[];
+out.push({m,b})});
+return out}
+ 
+function fmtDate(t){const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+async function saveFile(name,data){
+let d=null;
+try{if(window.claude&&window.claude.use)d=await window.claude.use('downloads')}catch(e){d=null}
+if(!d){try{const bl=new Blob([data],{type:'text/plain;charset=utf-8'});const u=URL.createObjectURL(bl);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);$('expMsg').textContent='저장했습니다.'}catch(e){$('expMsg').textContent='저장하지 못했습니다. "텍스트 복사"를 이용해주세요.'}return}
+try{await d.save({filename:name,data});$('expMsg').textContent='저장했습니다.'}
+catch(e){$('expMsg').textContent=e&&e.code==='declined'?'저장을 취소했습니다.':'저장하지 못했습니다. "텍스트 복사"를 이용해주세요.'}
+}
+function hasSaved(){if(!saved.length){$('expMsg').textContent='저장된 번호가 없습니다.';return false}return true}
+$('expCsv').onclick=()=>{
+if(!hasSaved())return;
+const lines=saved.map(s=>[(lang==='en'?tr(LOTS[s.lot].n):LOTS[s.lot].n),fmtDate(s.t),s.a.join(' '),s.b.join(' ')].join(','));
+saveFile('lotto-saved.csv','\ufeff'+[(lang==='en'?'Lottery,Saved on,Main numbers,Bonus numbers':'복권,저장일,메인번호,보너스번호')].concat(lines).join('\n'));
+};
+$('expJson').onclick=()=>{if(hasSaved())saveFile('lotto-saved.json',JSON.stringify(saved,null,1))};
+$('expTxt').onclick=async()=>{
+if(!hasSaved())return;
+const t=saved.map(s=>'['+(lang==='en'?tr(LOTS[s.lot].n):LOTS[s.lot].n)+'] '+fmtDate(s.t)+'  '+s.a.join(' ')+(s.b.length?' + '+s.b.join(' '):'')).join('\n');
+try{await navigator.clipboard.writeText(t);$('expMsg').textContent='복사했습니다.'}catch(e){$('expMsg').textContent='복사하지 못했습니다. 브라우저 권한을 확인해주세요.'}
+};
+function zoneSet(L){
+let a,t=0,ok=false;const z=Math.ceil(L.max/10);
+do{a=plain(L);t++;const c={};a.forEach(x=>{const k=Math.floor((x-1)/10);c[k]=(c[k]||0)+1});
+ok=Object.values(c).every(v=>v<=Math.ceil(L.pick/2))&&Object.keys(c).length>=Math.min(z,L.pick-2)}while(!ok&&t<5000);
+return a}
+function gapSet(L){
+const dr=parseDraws().slice(-10);if(!dr.length)return plain(L);
+let a=null,t=0;
+do{const src=dr[rnd(dr.length)].m.slice().sort((x,y)=>x-y);
+const gaps=[];for(let i=1;i<src.length;i++)gaps.push(Math.max(1,src[i]-src[i-1]+rnd(3)-1));
+const span=gaps.reduce((x,y)=>x+y,0);t++;
+if(span>=L.max){a=null;continue}
+const s=1+rnd(L.max-span);a=[s];gaps.forEach(g=>a.push(a[a.length-1]+g));
+if(a[a.length-1]>L.max)a=null}while(!a&&t<5000);
+return a||plain(L)}
+function okFilter(a){
+const d={};for(const x of a){const k=x%10;d[k]=(d[k]||0)+1;if(d[k]>2)return false}
+let run=1;for(let i=1;i<a.length;i++){run=a[i]===a[i-1]+1?run+1:1;if(run>2)return false}
+return true}
+function filterSet(L){
+const ex=new Set();parseDraws().slice(-2).forEach(r=>r.m.forEach(n=>ex.add(n)));
+let pool=[];for(let i=1;i<=L.max;i++)if(!ex.has(i))pool.push(i);
+if(pool.length<L.pick+5){pool=[];for(let i=1;i<=L.max;i++)pool.push(i)}
+let a,t=0;
+do{const s=new Set();while(s.size<L.pick)s.add(pool[rnd(pool.length)]);a=[...s].sort((x,y)=>x-y);t++}while(!okFilter(a)&&t<5000);
+return a}
+function mlSet(L){
+const dr=parseDraws();if(!dr.length)return plain(L);
+const N=dr.length,sc=Array(L.max+1).fill(0),seen=Array(L.max+1).fill(-1);
+dr.forEach((r,i)=>r.m.forEach(n=>{sc[n]+=Math.pow(0.95,N-1-i);seen[n]=i}));
+const mx=Math.max(...sc.slice(1),1e-9),w=[0];
+for(let n=1;n<=L.max;n++){const gap=seen[n]<0?N:N-1-seen[n];w.push(0.2+sc[n]/mx+0.5*Math.min(gap,N)/N)}
+return weightedPick(L,w)}
+const NOTES={
+random:'중복 없이 완전히 무작위로 뽑습니다. 통계 전략이 없는 가장 공정한 방식입니다.',
+balanced:'홀짝이 한쪽으로 쏠리지 않고, 합계가 평균 근처이며, 연속 번호가 2개 이하인 조합만 통과시킵니다.',
+hot:'3번에서 분석한 출현 빈도가 높은 번호에 가중치를 둡니다.',
+cold:'3번에서 분석한 출현 빈도가 낮은 번호에 가중치를 둡니다.',
+unpopular:'사람들이 많이 고르는 생일 번호(1~31)를 피해, 당첨 시 상금 분할 위험을 줄입니다. 당첨 확률은 그대로입니다.',
+zone:'10단위 구간마다 번호가 몰리지 않고 여러 구간에 퍼지도록 합니다.',
+gap:'3번 데이터의 최근 10회차 중 하나의 번호 간격 패턴을 골라 조금 변형해 비슷한 간격의 조합을 만듭니다.',
+filter:'같은 끝자리 3개 이상 금지, 연속 번호 2개 이하, 최근 2회차 당첨 번호 제외(3번 데이터 필요)를 적용합니다.',
+ml:'최근 회차에 가중한 출현 점수와 미출현 기간을 합친 단순 점수 모델입니다. 실제 딥러닝·랜덤포레스트·SVM이 아니며, 어떤 모델이든 추첨 결과를 예측하지는 못합니다.'};
+function showNote(){$('modeNote').textContent=NOTES[$('mode').value]||''}
+$('mode').addEventListener('change',showNote);showNote();
+ 
+function importSaved(text){
+let arr;try{arr=JSON.parse(text)}catch(e){$('expMsg').textContent='JSON 형식이 올바르지 않습니다.';return}
+if(!Array.isArray(arr)){$('expMsg').textContent='저장 번호 목록(배열) 형식이 아닙니다.';return}
+let add=0,skip=0;
+arr.forEach(s=>{
+const L=s&&LOTS[s.lot];let ok=!!L&&Array.isArray(s.a)&&Array.isArray(s.b);
+if(ok){const extra=BONUS_IN.has(s.lot)?0:(BONUS_N[s.lot]||0);
+ok=s.a.length===L.pick&&new Set(s.a).size===L.pick&&s.a.every(x=>Number.isInteger(x)&&x>=1&&x<=L.max)&&s.b.length===extra&&s.b.every(x=>Number.isInteger(x)&&x>=1&&x<=L.bonus.max)}
+if(!ok){skip++;return}
+const a=s.a.slice().sort((x,y)=>x-y),b=s.b.slice();
+const key=s.lot+'|'+a.join(',')+'|'+b.join(',');
+if(saved.some(v=>v.lot+'|'+v.a.join(',')+'|'+v.b.join(',')===key)){skip++;return}
+saved.push({lot:s.lot,a,b,t:Number.isFinite(s.t)?s.t:Date.now()});add++});
+store('saved',saved);renderSaved();
+$('expMsg').textContent=add+'개를 불러왔고 '+skip+'개는 건너뛰었습니다(중복 또는 형식 오류).';
+}
+$('impBtn').onclick=()=>$('impFile').click();
+$('impFile').onchange=()=>{
+const f=$('impFile').files[0];if(!f)return;
+const r=new FileReader();r.onload=()=>importSaved(String(r.result));
+r.onerror=()=>{$('expMsg').textContent='파일을 읽지 못했습니다. 아래 붙여넣기 방식을 이용해주세요.'};
+r.readAsText(f);$('impFile').value='';
+};
+$('impPaste').onclick=()=>{const t=$('impText').value.trim();if(!t){$('expMsg').textContent='붙여넣은 내용이 없습니다.';return}importSaved(t)};
+renderSaved();
+ 
+const LIT=[
+['로또 번호 연구소','Lotto Number Lab'],
+['번호 생성 · 과거 추첨 통계 · 확률 계산을 한 곳에서.','Number generator · draw statistics · odds calculator in one place.'],
+['로또는 매회 독립적인 무작위 추첨입니다. 통계나 패턴으로 당첨 확률을 높일 수 없고, 아래 도구는 재미와 참고용입니다. 감당 가능한 금액만 쓰세요.','Every lottery draw is independent and random. No statistic or pattern can improve your odds; these tools are for fun and reference only. Spend only what you can afford to lose.'],
+['1. 복권 선택','1. Choose a lottery'],['복권 종류','Lottery'],['2. 번호 생성','2. Generate numbers'],['생성 방식','Method'],
+['완전 무작위','Pure random'],['균형형 (홀짝·합계·연속 필터)','Balanced (odd/even, sum, consecutive filter)'],
+['자주 나온 번호 가중 (분석 데이터 필요)','Hot numbers (needs analysis data)'],['오래 안 나온 번호 가중 (분석 데이터 필요)','Cold numbers (needs analysis data)'],
+['인기 없는 번호 (32 이상 위주, 당첨 시 분할 위험 감소)','Unpopular numbers (mostly 32+, less prize splitting)'],
+['구간 분포 균형 (10단위 구간에 고르게)','Zone balance (spread across 10-number zones)'],
+['간격 패턴 (3번 데이터 필요, 마지막 줄 = 최신)','Gap pattern (needs step 3 data, last line = latest)'],
+['패턴 필터 (끝수·연번·최근 당첨 제외)','Pattern filter (last digit, runs, exclude recent)'],
+['점수 모델 (최근성 가중 데모, 3번 데이터 필요)','Score model (recency-weighted demo, needs step 3 data)'],
+['세트 수','Sets'],['번호 뽑기','Generate'],['결과 복사','Copy results'],['복사됨','Copied'],['복사 실패','Copy failed'],
+['중복 없이 완전히 무작위로 뽑습니다. 통계 전략이 없는 가장 공정한 방식입니다.','Draws fully at random without repeats. The fairest method, with no statistical strategy.'],
+['홀짝이 한쪽으로 쏠리지 않고, 합계가 평균 근처이며, 연속 번호가 2개 이하인 조합만 통과시킵니다.','Keeps only sets where odd/even is not lopsided, the sum is near average, and at most 2 numbers are consecutive.'],
+['3번에서 분석한 출현 빈도가 높은 번호에 가중치를 둡니다.','Weights numbers that appeared most often in the data analyzed in step 3.'],
+['3번에서 분석한 출현 빈도가 낮은 번호에 가중치를 둡니다.','Weights numbers that appeared least often in the data analyzed in step 3.'],
+['사람들이 많이 고르는 생일 번호(1~31)를 피해, 당첨 시 상금 분할 위험을 줄입니다. 당첨 확률은 그대로입니다.','Avoids popular birthday numbers (1-31) to reduce prize splitting if you win. Winning odds are unchanged.'],
+['10단위 구간마다 번호가 몰리지 않고 여러 구간에 퍼지도록 합니다.','Spreads numbers across several 10-number zones instead of clustering.'],
+['3번 데이터의 최근 10회차 중 하나의 번호 간격 패턴을 골라 조금 변형해 비슷한 간격의 조합을 만듭니다.','Picks the number-gap pattern of one of the last 10 draws from step 3, tweaks it slightly, and builds a set with similar gaps.'],
+['같은 끝자리 3개 이상 금지, 연속 번호 2개 이하, 최근 2회차 당첨 번호 제외(3번 데이터 필요)를 적용합니다.','No 3+ numbers with the same last digit, at most 2 consecutive, and excludes the last 2 draws (needs step 3 data).'],
+['최근 회차에 가중한 출현 점수와 미출현 기간을 합친 단순 점수 모델입니다. 실제 딥러닝·랜덤포레스트·SVM이 아니며, 어떤 모델이든 추첨 결과를 예측하지는 못합니다.','A simple score combining recency-weighted frequency and time since last seen. Not real deep learning, random forest, or SVM; no model can predict draw results.'],
+['먼저 3번에서 과거 데이터를 분석해야 이 방식을 쓸 수 있습니다. 지금은 무작위로 뽑았습니다.','Analyze past data in step 3 first to use this method. Random numbers were drawn instead.'],
+['3. 과거 추첨 분석','3. Analyze past draws'],['회차별 번호를 한 줄씩 붙여넣기 (예: 3 11 19 27 33 41)','Paste one draw per line (e.g. 3 11 19 27 33 41)'],
+['분석하기','Analyze'],['예시 데이터 넣기','Insert sample data'],
+['공식 사이트의 당첨번호를 붙여넣으면 빈도, 홀짝 비율, 합계 분포를 보여줍니다. 이 통계는 과거 기록일 뿐 미래를 예측하지 않습니다.','Paste winning numbers from the official site to see frequency, odd/even ratio, and sum distribution. These statistics describe the past only and do not predict the future.'],
+['많이 나온 번호','Most frequent'],['적게 나온 번호','Least frequent'],['가장 오래 안 나온 번호','Longest unseen'],
+['막대 오른쪽 숫자는 출현 횟수(위)와 미출현 회차 수(아래)입니다. 편차는 대부분 우연의 범위 안에 있습니다.','Numbers on the right are hit counts (top) and draws since last seen (bottom). Most deviations are normal chance variation.'],
+['인식된 회차가 없습니다.','No draws recognized.'],
+['4. 내 번호 저장 · 과거 당첨 비교','4. Save my numbers · Compare with past draws'],
+['직접 번호 입력 (메인 번호 뒤에 보너스 번호를 이어서, 공백 또는 쉼표로 구분)','Enter numbers (main numbers followed by bonus numbers, separated by spaces or commas)'],
+['예: 3 11 19 27 33 41','e.g. 3 11 19 27 33 41'],
+['저장된 번호가 없습니다. 2번에서 "저장"을 누르거나 위에 직접 입력하세요.','No saved numbers. Press "Save" in step 2 or enter numbers above.'],
+['등수 판정 · 3번 데이터와 비교','Prize tiers · Compare with step 3 data'],['CSV 저장','Save CSV'],['JSON 백업','JSON backup'],['텍스트 복사','Copy as text'],['JSON 불러오기','Import JSON'],
+['파일 선택이 안 되면 내용을 붙여넣어 불러오기','If file picking fails, paste the contents to import'],['붙여넣은 JSON 불러오기','Import pasted JSON'],['JSON 붙여넣기','Paste JSON'],
+['저장한 번호는 이 기기의 브라우저에만 보관됩니다. 3번 데이터의 각 줄에 메인 번호 뒤 보너스 번호를 이어 쓰면 등수가 판정됩니다 (한국·일본·파워볼·메가밀리언스는 1개, 유로밀리언스는 2개). 내보내기는 모든 복권의 저장 번호를 포함합니다.','Saved numbers are kept only in the browser on this device. Add bonus numbers after the main numbers on each line in step 3 to get prize tiers (1 for Korea, Japan, Powerball, Mega Millions; 2 for EuroMillions). Exports include saved numbers from all lotteries.'],
+['3번에 과거 추첨 데이터를 먼저 붙여넣어 주세요.','Paste past draw data into step 3 first.'],
+['저장했습니다.','Saved.'],['저장을 취소했습니다.','Save cancelled.'],['저장하지 못했습니다. "텍스트 복사"를 이용해주세요.','Could not save. Use "Copy as text" instead.'],
+['JSON 형식이 올바르지 않습니다.','Invalid JSON format.'],['저장 번호 목록(배열) 형식이 아닙니다.','Not a list of saved numbers.'],
+['파일을 읽지 못했습니다. 아래 붙여넣기 방식을 이용해주세요.','Could not read the file. Use the paste option below.'],['붙여넣은 내용이 없습니다.','Nothing pasted.'],
+['저장된 번호가 없습니다.','No saved numbers.'],['복사했습니다.','Copied.'],['복사하지 못했습니다. 브라우저 권한을 확인해주세요.','Could not copy. Check browser permissions.'],
+['2·3등(보너스 미입력)','Tier 2/3 (no bonus entered)'],['등수 판정: ','Prize tiers: '],['해당 없음','none'],['잭팟','Jackpot'],
+['. 어떤 번호를 골라도 확률은 동일합니다.','. Every combination has the same odds.'],
+['한국 로또 6/45','Korea Lotto 6/45'],['미국 파워볼','US Powerball'],['미국 메가밀리언스','US Mega Millions'],['유로밀리언스','EuroMillions'],['일본 로또6','Japan Loto 6'],
+['다크 모드','Dark mode'],['라이트 모드','Light mode']
+].sort((a,b)=>b[0].length-a[0].length);
+const RX=[
+[/1등 확률: 약 1 [/] ([0-9,]+)/,'Jackpot odds: about 1 in $1'],
+[/메인 ([0-9]+)개 [(]1~([0-9]+)[)] [+] 보너스 ([0-9]+)개 [(]1~([0-9]+)[)]/,'Main: $1 numbers (1-$2) + bonus: $3 (1-$4)'],
+[/메인 ([0-9]+)개 [(]1~([0-9]+)[)]/,'Main: $1 numbers (1-$2)'],
+[/합 ([0-9]+) · 홀 ([0-9]+)/,'Sum $1 · Odd $2'],
+[/분석 · 번호당 기대 출현 약 ([0-9.]+)회 · 평균 홀수 ([0-9.]+)개 · 평균 합계 ([0-9.]+)/,'analyzed · expected hits per number about $1 · avg. odd count $2 · avg. sum $3'],
+[/([0-9]+)회차와 비교했습니다[.]/,'Compared against $1 draws.'],
+[/ [(]보너스 번호가 없는 ([0-9]+)회차는 등수 판정에서 제외[)]/,' ($1 draws without a bonus number were skipped for prize tiers)'],
+[/([0-9]+)개를 불러왔고 ([0-9]+)개는 건너뛰었습니다[(]중복 또는 형식 오류[)][.]/,'Imported $1, skipped $2 (duplicates or invalid).'],
+[/ 한 줄에 ([0-9]+)개 숫자[(]1~([0-9]+), 중복 없음[)]를 공백으로 구분해 넣어주세요[.]/,' Enter $1 numbers per line (1-$2, no duplicates), separated by spaces.'],
+[/: 1~([0-9]+) 사이의 서로 다른 숫자 ([0-9]+)개를 입력해주세요[.]/,': enter $2 different numbers between 1 and $1.'],
+[/: 메인 ([0-9]+)개 뒤에 보너스 ([0-9]+)개[(]1~([0-9]+)[)]를 이어서 입력해주세요[.]/,': enter $1 main numbers followed by $2 bonus number(s) (1-$3).'],
+[/최고 ([0-9]+)개 일치/,'Best: $1 matched'],
+[/([0-9]+)개 일치 ([0-9]+)회/g,'$1 matched x$2'],
+[/2개 이하 ([0-9]+)회/,'2 or fewer x$1'],
+[/([0-9]+)회차/g,'$1 draws'],[/([0-9]+)등/g,'Tier $1'],[/([0-9]+)회/g,'x$1'],
+[/^저장$/,'Save'],[/^저장됨$/,'Saved'],[/^삭제$/,'Delete']
+];
+let lang=load('lang',null)||((navigator.language||'').toLowerCase().indexOf('ko')===0?'ko':'en');
+const REC=new WeakMap();let busy=false,tm=0;
+function tr(s){let r=s;for(const [k,v] of LIT)if(r.includes(k))r=r.split(k).join(v);for(const [k,v] of RX)r=r.replace(k,v);return r}
+function trText(s){const m=s.match(/^(\s*)([^]*?)(\s*)$/);return m[1]+tr(m[2])+m[3]}
+function applyLang(){
+busy=true;
+document.documentElement.lang=lang;document.title=lang==='en'?'Lotto Number Lab':'로또 번호 연구소';
+const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;
+while((n=w.nextNode())){const p=n.parentNode&&n.parentNode.nodeName;if(p==='SCRIPT'||p==='STYLE')continue;
+let r=REC.get(n);
+if(!r||(n.data!==r.k&&n.data!==r.e)){r={k:n.data,e:trText(n.data)};REC.set(n,r)}
+const want=lang==='en'?r.e:r.k;if(n.data!==want)n.data=want}
+['placeholder','aria-label'].forEach(a=>document.querySelectorAll('['+a+']').forEach(el=>{
+const kk='data-k-'+a;if(!el.hasAttribute(kk))el.setAttribute(kk,el.getAttribute(a));
+const k=el.getAttribute(kk);el.setAttribute(a,lang==='en'?tr(k):k)}));
+busy=false}
+new MutationObserver(()=>{if(busy||lang!=='en')return;clearTimeout(tm);tm=setTimeout(applyLang,0)}).observe(document.body,{childList:true,characterData:true,subtree:true});
+$('lang').value=lang;
+$('lang').onchange=()=>{lang=$('lang').value;store('lang',lang);applyLang()};
+applyLang();
+</script>
+</body>
+</html>
+ 
